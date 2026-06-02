@@ -12,7 +12,7 @@ public class WebClientConfig {
 
  @Bean //ejemplo de configuracion de un webclient para consumir una api externa
     public WebClient pokeApiWebClient(WebClient.Builder builder) {
-        return builder.baseUrl(" url..").build();
+        return builder.build();
     }
 
 

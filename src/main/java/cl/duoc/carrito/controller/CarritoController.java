@@ -48,12 +48,14 @@ public class CarritoController {
         );
     }
 
-    // CREAR
+    // CREAR carrito  comunciacion con cliente para agregar producto al carrito
     @PostMapping
     public ResponseEntity<Map<String, Object>> crearCarrito(
             @Valid @RequestBody CreateRequestCarrito request
     ) {
-
+    System.out.println(
+            "📥 CARRITO recibió solicitud del CLIENTE ID: "
+            +request.clienteId());
         Carrito carrito =
                 carritoService.saveCarrito(
                         CarritoMapper.toCarrito(request)
@@ -68,7 +70,7 @@ public class CarritoController {
         );
 
         response.put("id", carrito.getId());
-
+System.out.println("✅ CARRITO guardó producto para CLIENTE ID: ");
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(response);
@@ -178,5 +180,26 @@ public class CarritoController {
 
         return ResponseEntity.ok(response);
     }
+
+@PostMapping("/cliente/{clienteId}/agregar")
+public ResponseEntity<Void> agregarProductoCliente(
+        @PathVariable Integer clienteId
+) {
+
+    System.out.println(
+            "📥 CARRITO recibió solicitud del CLIENTE ID: "
+            + clienteId
+    );
+
+    return ResponseEntity.ok().build();
 }
+
+    }
+ 
+
+
+
+
+
+
 
