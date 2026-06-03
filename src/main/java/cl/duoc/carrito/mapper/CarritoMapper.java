@@ -14,7 +14,7 @@ public class CarritoMapper {
         carrito.setClienteId(request.clienteId());
         carrito.setProductoId(request.productoId());
         carrito.setCantidad(request.cantidad());
-        carrito.setSubtotal(request.subtotal());
+        
 
         carrito.setEstado("ACTIVO");
 

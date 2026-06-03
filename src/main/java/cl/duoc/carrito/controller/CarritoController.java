@@ -15,13 +15,17 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.reactive.function.client.WebClient;
 import java.util.Map;
 import cl.duoc.carrito.dto.CreateRequestCarrito;
+import cl.duoc.carrito.dto.ProductoResponseDTO;
 import cl.duoc.carrito.dto.UpdateRequestCarrito;
 import cl.duoc.carrito.exception.ResourceNotFoundException;
 import cl.duoc.carrito.mapper.CarritoMapper;
 import cl.duoc.carrito.model.Carrito;
 import cl.duoc.carrito.service.CarritoService;
 import jakarta.validation.Valid;
+import lombok.Data;
+import cl.  duoc.carrito.repository.CarritoRepository   ;
 import java.util.List;
+
 
 
 @RestController
@@ -49,33 +53,62 @@ public class CarritoController {
     }
 
     // CREAR carrito  comunciacion con cliente para agregar producto al carrito
-    @PostMapping
-    public ResponseEntity<Map<String, Object>> crearCarrito(
-            @Valid @RequestBody CreateRequestCarrito request
-    ) {
-    System.out.println(
-            "📥 CARRITO recibió solicitud del CLIENTE ID: "
-            +request.clienteId());
-        Carrito carrito =
-                carritoService.saveCarrito(
-                        CarritoMapper.toCarrito(request)
-                );
+    
+@PostMapping
+public ResponseEntity<Map<String, Object>> crearCarrito(
+        @Valid @RequestBody CreateRequestCarrito request
+) {
+    System.out.println("LLAMANDO A CATALOGO");
+    System.out.println(" CLIENTE ID: " + request.clienteId());
 
-        Map<String, Object> response =
-                new HashMap<>();
+    //  LLAMADA AL CATÁLOGO (WebClient en controller)
+    ProductoResponseDTO producto = webClient
+            .get()
+            .uri("http://localhost:8090/api/productos/" + request.productoId())
+            .retrieve()
+            .bodyToMono(ProductoResponseDTO.class)
+            .block();
+//  post http://localhost:8086/api/v1/carritos -----> para comprobar que se conecta con catalogo
+//body para postman
+//*{
+ // "clienteId": 1,
+  //"productoId": 1,
+  //"cantidad": 2
+ //}  
 
-        response.put(
-                "mensaje",
-                "Producto agregado al carrito"
-        );
-
-        response.put("id", carrito.getId());
-System.out.println("✅ CARRITO guardó producto para CLIENTE ID: ");
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(response);
+// validar si existe producto
+    if (producto == null) {
+        throw new ResourceNotFoundException("Producto no encontrado en catálogo");
     }
 
+    // 🛒 crear carrito
+    Carrito carrito = new Carrito();
+    carrito.setClienteId(request.clienteId());
+    carrito.setProductoId(producto.getId().intValue());
+    carrito.setCantidad(request.cantidad());
+
+    //  calcular subtotal real
+    double subtotal = producto.getPrecio() * request.cantidad();
+    carrito.setSubtotal(subtotal);
+
+    carrito.setEstado("ACTIVO");
+
+    // guardar en BD 
+    Carrito guardado = carritoService.saveCarrito(carrito);
+
+    // 📤 respuesta
+    Map<String, Object> response = new HashMap<>();
+    response.put("mensaje", "Producto agregado al carrito");
+    response.put("id", guardado.getId());
+
+    System.out.println("✅ Carrito creado para cliente ID: " + request.clienteId());
+
+    return ResponseEntity.status(HttpStatus.CREATED).body(response);
+}
+
+
+
+    
     // BUSCAR POR ID
     @GetMapping("/{id}")
     public ResponseEntity<Carrito> buscarCarrito(
@@ -95,6 +128,9 @@ System.out.println("✅ CARRITO guardó producto para CLIENTE ID: ");
         return ResponseEntity.ok(carrito);
     }
 
+
+
+    
     // ACTUALIZAR
     @PutMapping("/{id}")
     public ResponseEntity<Map<String, Object>>
@@ -193,6 +229,23 @@ public ResponseEntity<Void> agregarProductoCliente(
 
     return ResponseEntity.ok().build();
 }
+// EJEMPLO DE CONSUMO DE API EXTERNA (CATÁLOGO)
+public ProductoResponseDTO obtenerProducto(Long productoId) {
+
+    try {
+        return webClient.get()
+                .uri("http://localhost:8090/api/productos/" + productoId)
+                .retrieve()
+                .bodyToMono(ProductoResponseDTO.class)
+                .block();
+
+    } catch (Exception e) {
+        throw new ResourceNotFoundException(
+                "Producto no encontrado o catálogo no disponible"
+        );
+    }
+}
+
 
     }
  
