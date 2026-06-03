@@ -9,93 +9,60 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.http.ResponseEntity; 
+import java.util.HashMap;  
+
 
 import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-public GlobalExceptionHandler() {
-        System.out.println("✅ GlobalExceptionHandler registrado correctamente en Clientes");
-    }
-
-    /**
-     * Maneja errores de validación Jakarta con Problem Details
-     */
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ProblemDetail handleValidationErrors(MethodArgumentNotValidException ex) {
-        System.out.println("🔴 Errores de validación detectados en ClienteController");
-
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
-                HttpStatus.BAD_REQUEST,
-                "Error de validación en los datos enviados"
-        );
-
-        problem.setTitle("Validation Error");
-        problem.setProperty("timestamp", Instant.now());
-
-        Map<String, String> errors = ex.getBindingResult().getFieldErrors().stream()
-                .collect(Collectors.toMap(FieldError::getField,
-                        error -> error.getDefaultMessage() != null ? error.getDefaultMessage() : "Valor inválido"));
-
-        problem.setProperty("errors", errors);
-        return problem;
-    }
-
-    /**
-     * Maneja errores de parseo de JSON
-     */
-    @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ProblemDetail handleJsonParseError(HttpMessageNotReadableException ex) {
-        System.out.println("🟡 Error de parseo JSON capturado en ClienteController");
-
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
-                HttpStatus.BAD_REQUEST,
-                "Error al procesar el JSON enviado"
-        );
-
-        problem.setTitle("JSON Parse Error");
-        problem.setProperty("timestamp", Instant.now());
-        problem.setProperty("detalle", ex.getMostSpecificCause().getMessage());
-        return problem;
-    }
-
-    /**
-     * Maneja recursos no encontrados
-     */
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ProblemDetail handleResourceNotFound(ResourceNotFoundException ex) {
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
-                HttpStatus.NOT_FOUND,
-                ex.getMessage()
-        );
+    public ResponseEntity<Map<String, Object>> handleNotFound(ResourceNotFoundException ex) {
 
-        problem.setTitle("Resource Not Found");
-        problem.setProperty("timestamp", Instant.now());
-        return problem;
+        Map<String, Object> response = new HashMap<>();
+        response.put("error", "No Encontrado");
+        response.put("mensaje", ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
-    /**
-     * Maneja errores generales
-     */
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        response.put("error", "ERROR DE VALIDACION");
+        response.put("mensaje", "Error de validación en los datos enviados");
+
+        Map<String, String> campos = new HashMap<>();
+
+        ex.getBindingResult().getFieldErrors()
+                .forEach(err -> campos.put(err.getField(), err.getDefaultMessage()));
+
+        response.putAll(campos); // 👈 esto hace que quede "a la derecha"
+
+        return ResponseEntity.badRequest().body(response);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, Object>> handleJson(HttpMessageNotReadableException ex) {
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("error", "JSON_INVALIDO");
+        response.put("mensaje", "El JSON enviado es inválido");
+
+        return ResponseEntity.badRequest().body(response);
+    }
+
     @ExceptionHandler(Exception.class)
-    public ProblemDetail handleGeneralException(Exception ex) {
-        System.out.println("🔴 EXCEPCIÓN CAPTURADA: " + ex.getClass().getName());
-        System.out.println("🔴 Mensaje: " + ex.getMessage());
-        ex.printStackTrace();
+    public ResponseEntity<Map<String, Object>> handleGeneral(Exception ex) {
 
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
-                HttpStatus.INTERNAL_SERVER_ERROR,
-                "Error interno del servidor"
-        );
+        Map<String, Object> response = new HashMap<>();
+        response.put("error", "INTERNAL_ERROR");
+        response.put("mensaje", "Error interno del servidor");
 
-        problem.setTitle("Internal Server Error");
-        problem.setProperty("timestamp", Instant.now());
-        problem.setProperty("detalle", ex.getMessage());
-        problem.setProperty("tipoExcepcion", ex.getClass().getSimpleName());
-        return problem;
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
-
-
-
 }
