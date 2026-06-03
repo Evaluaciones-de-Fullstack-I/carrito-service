@@ -223,32 +223,17 @@ public ResponseEntity<Void> agregarProductoCliente(
 ) {
 
     System.out.println(
-            "📥 CARRITO recibió solicitud del CLIENTE ID: "
+            " CARRITO recibió solicitud del CLIENTE ID: "
             + clienteId
     );
 
     return ResponseEntity.ok().build();
 }
-// EJEMPLO DE CONSUMO DE API EXTERNA (CATÁLOGO)
-public ProductoResponseDTO obtenerProducto(Long productoId) {
 
-    try {
-        return webClient.get()
-                .uri("http://localhost:8090/api/productos/" + productoId)
-                .retrieve()
-                .bodyToMono(ProductoResponseDTO.class)
-                .block();
-
-    } catch (Exception e) {
-        throw new ResourceNotFoundException(
-                "Producto no encontrado o catálogo no disponible"
-        );
-    }
 }
 
 
-    }
- 
+    
 
 
 
