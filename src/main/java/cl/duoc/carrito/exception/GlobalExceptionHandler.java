@@ -56,9 +56,15 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(response);
     }
 
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, Object>> handleGeneral(Exception ex) {
-
+      @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, Object>> handleGeneral(Exception ex) throws Exception {
+        
+        // Si el error es porque no encuentra un recurso de Swagger (como el favicon o estilos),
+        // le decimos a Java que tire el error hacia afuera para que Spring lo resuelva nativamente.
+        if (ex.getClass().getName().contains("NoResourceFoundException") || 
+            ex instanceof jakarta.servlet.ServletException) {
+            throw ex;
+        }
         Map<String, Object> response = new HashMap<>();
         response.put("error", "INTERNAL_ERROR");
         response.put("mensaje", "Error interno del servidor");
