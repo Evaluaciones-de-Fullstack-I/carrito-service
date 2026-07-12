@@ -98,7 +98,7 @@ public ResponseEntity<Map<String, Object>> crearCarrito(
     //  LLAMADA AL CATÁLOGO (WebClient en controller)
     ProductoResponseDTO producto = webClient
             .get()
-            .uri("http://localhost:8090/api/productos/" + request.productoId())
+            .uri("https://catalogo-service-msf3.onrender.com/api/productos/{id}" + request.productoId())
             .retrieve()
             .bodyToMono(ProductoResponseDTO.class)
             .block();
