@@ -140,18 +140,20 @@ public ResponseEntity<?> procesarCompra(@PathVariable Long clienteId) {
     try {
         System.out.println("🛰️ Iniciando pasarela de compra hacia el servicio..");
 
-        // 🚀 CONSTRUIMOS EL JSON EXACTO QUE ESPERA CARLOS (PedidoRequestDTO)
-        Map<String, Object> requestParaPedidos = new HashMap<>();
-        requestParaPedidos.put("clienteId", clienteId);
-        requestParaPedidos.put("direccionEnvio", "Av. Concha y Toro 1340, Puente Alto"); // Dirección por defecto para la prueba
+        // 🚀 (PedidoRequestDTO)
 
-        // Enviamos la petición POST al Gateway o directo al servicio de Carlos
-        Map<?, ?> respuestaPedidos = webClient.post()
-                .uri("https://pedido-service-3net.onrender.com/api/pedidos")
-                .bodyValue(requestParaPedidos) // 📦 Enviamos clienteId y direccionEnvio
-                .retrieve()
-                .bodyToMono(Map.class)
-                .block();
+      Map<String, Object> requestParaPedidos = new HashMap<>();
+requestParaPedidos.put("clienteId", clienteId);
+requestParaPedidos.put("direccionEnvio", "Av. Concha y Toro 1340, Puente Alto");
+requestParaPedidos.put("montoTotal", 35000.0); // 👈 ¡ESTA LÍNEA FALTABA! Carlos la pide obligatoria
+
+// 2. Enviamos el objeto completo a su microservicio en Render
+Map<?, ?> respuestaPedidos = webClient.post()
+        .uri("https://pedido-service-3net.onrender.com/api/pedidos")
+        .bodyValue(requestParaPedidos)
+        .retrieve()
+        .bodyToMono(Map.class)
+        .block();
 
         return ResponseEntity.ok(Map.of(
             "mensaje", "¡Compra exitosa procesada en el servicio externo!",
