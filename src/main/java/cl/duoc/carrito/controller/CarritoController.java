@@ -32,6 +32,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 
@@ -102,13 +103,6 @@ public ResponseEntity<Map<String, Object>> crearCarrito(
             .retrieve()
             .bodyToMono(ProductoResponseDTO.class)
             .block();
-//  post http://localhost:8086/api/v1/carritos -----> para comprobar que se conecta con catalogo
-//body para postman
-//*{
- // "clienteId": 1,
-  //"productoId": 1,
-  //"cantidad": 2
- //}  
 
 // validar si existe producto
     if (producto == null) {
@@ -140,8 +134,55 @@ public ResponseEntity<Map<String, Object>> crearCarrito(
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
 }
 
+// 🚀 ENDPOINT PARA REALIZAR LA COMPRA (Enviar a Pedidos de Carlos)
+@PostMapping("/cliente/{clienteId}/comprar")
+@Operation(summary = "Procesar la compra del carrito", description = "Toma los productos activos del cliente y genera la orden de compra en el microservicio externo de Pedidos.")
+@ApiResponse(responseCode = "200", description = "Compra procesada y pedido generado exitosamente")
+@ApiResponse(responseCode = "404", description = "El cliente no tiene productos activos en su carrito")
+@ApiResponse(responseCode = "500", description = "Error de comunicación con el servicio de Pedidos")
+public ResponseEntity<Map<String, Object>> procesarCompra(@PathVariable Integer clienteId) {
+    
+    // 1. Obtener los ítems activos del carrito de este cliente
+    List<Carrito> itemsCarrito = carritoService.buscarPorCliente(clienteId);
+    if (itemsCarrito == null || itemsCarrito.isEmpty()) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("error", "No se encontraron productos activos en el carrito para este cliente."));
+    }
 
+    // 🛰️ 2. LLAMADA A PEDIDOS DE CARLOS (Usando tu WebClient inyectado con estilo {id})
+    try {
+        System.out.println("📤 Enviando datos al servicio de Pedidos para el Cliente ID: " + clienteId);
 
+        // Estructuramos el JSON que espera Carlos (ajusta los nombres de campos según el DTO de él si es necesario)
+        Map<String, Object> pedidoData = new HashMap<>();
+        pedidoData.put("clienteId", clienteId);
+        pedidoData.put("items", itemsCarrito); // Mandamos la lista completa de lo que va a comprar
+
+        webClient.post()
+                .uri("https://pedido-service-3net.onrender.com/api/pedidos")
+                .bodyValue(pedidoData)
+                .retrieve()
+                .bodyToMono(Void.class)
+                .block(); // Esperamos a que el servicio de Carlos procese y responda
+
+    } catch (Exception e) {
+        System.out.println("❌ Error en WebClient con Pedidos: " + e.getMessage());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Error de comunicación con el servicio de Pedidos de Carlos. Intente más tarde."));
+    }
+
+    // 3. Cambiar el estado de todos los ítems del carrito local a "COMPRADO" para limpiarlo
+    for (Carrito item : itemsCarrito) {
+        carritoService.cambiarEstado(item.getId(), "COMPRADO");
+    }
+
+    // 📤 Respuesta de éxito
+    Map<String, Object> response = new HashMap<>();
+    response.put("mensaje", "¡Compra exitosa! Pedido enviado al servicio externo correctamente.");
+    response.put("clienteId", clienteId);
+    
+    return ResponseEntity.ok(response);
+}
     
     // BUSCAR POR ID
    @GetMapping("/{id}")
